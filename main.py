@@ -14,8 +14,8 @@ class TransMatrix(sp.Matrix):
 def DH2TransMatrix(a, L, d, theta):
     return TransMatrix([
         [cos(theta),         -sin(theta),        0,        L        ],
-        [sin(theta)*cos(a),  cos(theta)*sin(a),  -sin(a),  -sin(a)*d],
-        [sin(theta)*cos(a),  cos(theta)*sin(a),  cos(a),   cos(a)*d ],
+        [sin(theta)*cos(a),  cos(theta)*cos(a),  -sin(a),  -sin(a)*d],
+        [sin(theta)*sin(a),  cos(theta)*sin(a),  cos(a),   cos(a)*d ],
         [0,                  0,                  0,        1        ]
     ])
 
@@ -34,5 +34,11 @@ def solveDirect(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
     return res[0], res[1], res[2]
 
 
-for i in parseDH2TransMatrix(DH_Table):
-    print(i.subs(th1, 0))
+def printEval(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
+    for i in TransMatrices:
+        print(i.evalf(subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6}))
+
+
+TransMatrices = parseDH2TransMatrix(DH_Table)
+# printEval(TransMatrices, 0, 0, 0, 0, 0, 0)
+print(solveDirect(TransMatrices, 0, 0, 0, 0, 0, 0))
