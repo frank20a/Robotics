@@ -28,18 +28,6 @@ def parseDH2TransMatrix(table):
     return tuple(res)
 
 
-def solveDirect(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
-    res = np.array([[0], [0], [0], [1]])
-    for transMatrix in TransMatrices[::-1]:
-        res = transMatrix.evalf(subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6}) * res
-    return res[0], res[1], res[2]
-
-
-def printEval(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
-    for i in TransMatrices:
-        print(i.evalf(subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6}))
-
-
 def sMf(TransMatrices, s=0, f=6):
     if s < 0 or f > len(TransMatrices): raise IndexError
 
@@ -49,38 +37,19 @@ def sMf(TransMatrices, s=0, f=6):
     return res
 
 
-def generateEquations(M):
-    res = []
-    for i in range(0, len(M)-1):
-        for j in range(i, -1, -1):
-            pass
+def printEval(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
+    for i in TransMatrices:
+        print(i.evalf(subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6}))
 
 
-def Jacobian(M):
-    z0 = np.array([0, 0, 1])
-    z1 = np.array([M[0][0][2], M[0][1][2], M[0][2][2]])
-    t1 = np.array([M[0][0][3], M[0][1][3], M[0][2][3]])
-    z2 = np.array([sMf(M, 0, 2)[0][0][2], sMf(M, 0, 2)[0][1][2], sMf(M, 0, 2)[0][2][2]])
-    t2 = np.array([sMf(M, 0, 2)[0][0][3], sMf(M, 0, 2)[0][1][3], sMf(M, 0, 2)[0][2][3]])
-    z3 = np.array([sMf(M, 0, 3)[0][0][2], sMf(M, 0, 3)[0][1][2], sMf(M, 0, 3)[0][2][2]])
-    t3 = np.array([sMf(M, 0, 3)[0][0][3], sMf(M, 0, 3)[0][1][3], sMf(M, 0, 3)[0][2][3]])
-    z4 = np.array([sMf(M, 0, 4)[0][0][2], sMf(M, 0, 4)[0][1][2], sMf(M, 0, 4)[0][2][2]])
-    t4 = np.array([sMf(M, 0, 4)[0][0][3], sMf(M, 0, 4)[0][1][3], sMf(M, 0, 4)[0][2][3]])
-    z5 = np.array([sMf(M, 0, 5)[0][0][2], sMf(M, 0, 5)[0][1][2], sMf(M, 0, 5)[0][2][2]])
-    t5 = np.array([sMf(M, 0, 5)[0][0][3], sMf(M, 0, 5)[0][1][3], sMf(M, 0, 5)[0][2][3]])
-    # z6 = np.array([sMf(M, 0, 6)[0][0][2], sMf(M, 0, 6)[0][1][2], sMf(M, 0, 6)[0][2][2]])
-    t6 = np.array([sMf(M, 0, 6)[0][0][3], sMf(M, 0, 6)[0][1][3], sMf(M, 0, 6)[0][2][3]])
-    return np.array[
-        [z0.dot(t6)[0], z1.dot(t6-t1)[0], z2.dot(t6-t2)[0], z3.dot(t6-t3)[0], z4.dot(t6-t4)[0], z5.dot(t6-t5)[0]],
-        [z0.dot(t6)[1], z1.dot(t6-t1)[1], z2.dot(t6-t2)[1], z3.dot(t6-t3)[1], z4.dot(t6-t4)[1], z5.dot(t6-t5)[1]],
-        [z0.dot(t6)[2], z1.dot(t6-t1)[2], z2.dot(t6-t2)[2], z3.dot(t6-t3)[2], z4.dot(t6-t4)[2], z5.dot(t6-t5)[2]],
-        [z0[0], z1[0], z2[0], z3[0], z4[0], z5[0]],
-        [z0[1], z1[1], z2[1], z3[1], z4[1], z5[1]],
-        [z0[2], z1[2], z2[2], z3[2], z4[2], z5[2]]
-    ]
+def solveDirect(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
+    res = np.array([[0], [0], [0], [1]])
+    for transMatrix in TransMatrices[::-1]:
+        res = transMatrix.evalf(subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6}) * res
+    return res[0], res[1], res[2]
 
 
-def Inverse(M06):
+def solveInverse(M06):
     ((ix, jx, kx, px), (iy, jy, ky, py), (iz, jz, kz, pz), (_, _, _, _)) = M06  # Get data from M06
 
     # Calculate th1
@@ -127,6 +96,30 @@ def Inverse(M06):
             th2) * sin(th4))
 
     return th1, th2, th3, th4, th5, th6
+
+
+def Jacobian(M):
+    z0 = sp.Matrix([0, 0, 1])
+    z1 = sp.Matrix([M[0][0][2], M[0][1][2], M[0][2][2]])
+    t1 = sp.Matrix([M[0][0][3], M[0][1][3], M[0][2][3]])
+    z2 = sp.Matrix([sMf(M, 0, 2)[0][2], sMf(M, 0, 2)[1][2], sMf(M, 0, 2)[2][2]])
+    t2 = sp.Matrix([sMf(M, 0, 2)[0][3], sMf(M, 0, 2)[1][3], sMf(M, 0, 2)[2][3]])
+    z3 = sp.Matrix([sMf(M, 0, 3)[0][2], sMf(M, 0, 3)[1][2], sMf(M, 0, 3)[2][2]])
+    t3 = sp.Matrix([sMf(M, 0, 3)[0][3], sMf(M, 0, 3)[1][3], sMf(M, 0, 3)[2][3]])
+    z4 = sp.Matrix([sMf(M, 0, 4)[0][2], sMf(M, 0, 4)[1][2], sMf(M, 0, 4)[2][2]])
+    t4 = sp.Matrix([sMf(M, 0, 4)[0][3], sMf(M, 0, 4)[1][3], sMf(M, 0, 4)[2][3]])
+    z5 = sp.Matrix([sMf(M, 0, 5)[0][2], sMf(M, 0, 5)[1][2], sMf(M, 0, 5)[2][2]])
+    t5 = sp.Matrix([sMf(M, 0, 5)[0][3], sMf(M, 0, 5)[1][3], sMf(M, 0, 5)[2][3]])
+    # z6 = sp.Matrix([sMf(M, 0, 6)[0][0][2], sMf(M, 0, 6)[0][1][2], sMf(M, 0, 6)[0][2][2]])
+    t6 = sp.Matrix([sMf(M, 0, 6)[0][3], sMf(M, 0, 6)[1][3], sMf(M, 0, 6)[2][3]])
+    return sp.Matrix([
+        [z0.dot(t6)[0],  z1.dot(t6-t1)[0],  z2.dot(t6-t2)[0],  z3.dot(t6-t3)[0],  z4.dot(t6-t4)[0],  z5.dot(t6-t5)[0] ],
+        [z0.dot(t6)[1],  z1.dot(t6-t1)[1],  z2.dot(t6-t2)[1],  z3.dot(t6-t3)[1],  z4.dot(t6-t4)[1],  z5.dot(t6-t5)[1] ],
+        [z0.dot(t6)[2],  z1.dot(t6-t1)[2],  z2.dot(t6-t2)[2],  z3.dot(t6-t3)[2],  z4.dot(t6-t4)[2],  z5.dot(t6-t5)[2] ],
+        [z0[0],          z1[0],             z2[0],             z3[0],             z4[0],             z5[0]            ],
+        [z0[1],          z1[1],             z2[1],             z3[1],             z4[1],             z5[1]            ],
+        [z0[2],          z1[2],             z2[2],             z3[2],             z4[2],             z5[2]            ]
+    ])
 
 
 M = parseDH2TransMatrix(DH_Table)
