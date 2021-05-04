@@ -2,8 +2,9 @@ import sympy as sp
 import numpy as np
 from sympy import sin, cos, tan, atan, atan2, acos, asin, sqrt, pi, oo
 from data import *
+from pprint import pprint
 
-sp.init_printing(use_unicode=True);
+sp.init_printing(use_unicode=True)
 
 
 class TransMatrix(sp.Matrix):
@@ -39,6 +40,24 @@ def printEval(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
         print(i.evalf(subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6}))
 
 
-TransMatrices = parseDH2TransMatrix(DH_Table)
-# printEval(TransMatrices, 0, 0, 0, 0, 0, 0)
-print(solveDirect(TransMatrices, 0, 0, 0, 0, 0, 0))
+def sMf(TransMatrices, s=0, f=6):
+    if s < 0 or f > len(TransMatrices): raise IndexError
+
+    res = TransMatrices[s]
+    for i in TransMatrices[s+1:f]:
+        res = res * i
+    return res
+
+
+def generateEquations(M):
+    res = []
+    for i in range(0, len(M)-1):
+        for j in range(i, -1, -1):
+            pass
+
+
+M = parseDH2TransMatrix(DH_Table)
+print(solveDirect(M, 0, 0, 0, 0, 0, 0))
+
+pprint(M[0]**-1 * sMf(M, 0, 6)-sMf(M, 1, 6))
+pprint(M[4]**-1 * M[3]**-1 * M[2]**-1 * M[1]**-1 * M[0]**-1 * sMf(M, 0, 6)-sMf(M, 5, 6))
