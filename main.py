@@ -56,8 +56,28 @@ def generateEquations(M):
             pass
 
 
-def Jacobian():
-    pass
+def Jacobian(M):
+    z0 = np.array([0, 0, 1])
+    z1 = np.array([M[0][0][2], M[0][1][2], M[0][2][2]])
+    t1 = np.array([M[0][0][3], M[0][1][3], M[0][2][3]])
+    z2 = np.array([sMf(M, 0, 2)[0][0][2], sMf(M, 0, 2)[0][1][2], sMf(M, 0, 2)[0][2][2]])
+    t2 = np.array([sMf(M, 0, 2)[0][0][3], sMf(M, 0, 2)[0][1][3], sMf(M, 0, 2)[0][2][3]])
+    z3 = np.array([sMf(M, 0, 3)[0][0][2], sMf(M, 0, 3)[0][1][2], sMf(M, 0, 3)[0][2][2]])
+    t3 = np.array([sMf(M, 0, 3)[0][0][3], sMf(M, 0, 3)[0][1][3], sMf(M, 0, 3)[0][2][3]])
+    z4 = np.array([sMf(M, 0, 4)[0][0][2], sMf(M, 0, 4)[0][1][2], sMf(M, 0, 4)[0][2][2]])
+    t4 = np.array([sMf(M, 0, 4)[0][0][3], sMf(M, 0, 4)[0][1][3], sMf(M, 0, 4)[0][2][3]])
+    z5 = np.array([sMf(M, 0, 5)[0][0][2], sMf(M, 0, 5)[0][1][2], sMf(M, 0, 5)[0][2][2]])
+    t5 = np.array([sMf(M, 0, 5)[0][0][3], sMf(M, 0, 5)[0][1][3], sMf(M, 0, 5)[0][2][3]])
+    # z6 = np.array([sMf(M, 0, 6)[0][0][2], sMf(M, 0, 6)[0][1][2], sMf(M, 0, 6)[0][2][2]])
+    t6 = np.array([sMf(M, 0, 6)[0][0][3], sMf(M, 0, 6)[0][1][3], sMf(M, 0, 6)[0][2][3]])
+    return np.array[
+        [z0.dot(t6)[0], z1.dot(t6-t1)[0], z2.dot(t6-t2)[0], z3.dot(t6-t3)[0], z4.dot(t6-t4)[0], z5.dot(t6-t5)[0]],
+        [z0.dot(t6)[1], z1.dot(t6-t1)[1], z2.dot(t6-t2)[1], z3.dot(t6-t3)[1], z4.dot(t6-t4)[1], z5.dot(t6-t5)[1]],
+        [z0.dot(t6)[2], z1.dot(t6-t1)[2], z2.dot(t6-t2)[2], z3.dot(t6-t3)[2], z4.dot(t6-t4)[2], z5.dot(t6-t5)[2]],
+        [z0[0], z1[0], z2[0], z3[0], z4[0], z5[0]],
+        [z0[1], z1[1], z2[1], z3[1], z4[1], z5[1]],
+        [z0[2], z1[2], z2[2], z3[2], z4[2], z5[2]]
+    ]
 
 
 def Inverse(M06):
