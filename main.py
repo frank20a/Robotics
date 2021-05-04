@@ -8,48 +8,58 @@ sp.init_printing(use_unicode=True)
 
 
 class TransMatrix(sp.Matrix):
+    """TransMatrix subclasses sympy's Matrix in order to add extra features. Currently not implemented!"""
+
     def __init__(self, arg):
         super().__init__()
 
 
 def DH2TransMatrix(a, L, d, theta):
+    """Creates Transition Matrix for a specific joint given its DH-Parameters"""
     return TransMatrix([
-        [cos(theta),         -sin(theta),        0,        L        ],
-        [sin(theta)*cos(a),  cos(theta)*cos(a),  -sin(a),  -sin(a)*d],
-        [sin(theta)*sin(a),  cos(theta)*sin(a),  cos(a),   cos(a)*d ],
-        [0,                  0,                  0,        1        ]
+        [cos(theta), -sin(theta), 0, L],
+        [sin(theta) * cos(a), cos(theta) * cos(a), -sin(a), -sin(a) * d],
+        [sin(theta) * sin(a), cos(theta) * sin(a), cos(a), cos(a) * d],
+        [0, 0, 0, 1]
     ])
 
 
 def parseDH2TransMatrix(table):
+    """Creates list of Transition Matrices given the DH-Table for the robot. list[0] is 0M1, list 1 is 1M2 etc."""
     res = []
     for a, L, d, theta in table:
-        res.append(DH2TransMatrix(a, L, d, theta))
+        res.append(DH2TransMatrix(a, L, d, theta))  # Call DH2TransMatrix recursively
     return tuple(res)
 
 
-def sMf(TransMatrices, s=0, f=6):
+def sMf(TransMatrices, s: int = 0, f: int = 6):
+    """Returns the Transition Matrix from joint s to joint f (sMs+1 * s+1Ms+2 * ... * f-1Mf)."""
     if s < 0 or f > len(TransMatrices): raise IndexError
 
     res = TransMatrices[s]
-    for i in TransMatrices[s+1:f]:
-        res = res * i
+    for i in TransMatrices[s + 1:f]:
+        res = res * i   # Multiply TransMatrix's
     return res
 
 
 def printEval(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
+    """Print the Transition Matrices after evaluating symbolic variables with constants."""
     for i in TransMatrices:
         print(i.evalf(subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6}))
 
 
 def solveDirect(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
+    """Given the list of Transition Matrices and the joint angles, return the position of the working tip."""
     res = np.array([[0], [0], [0], [1]])
     for transMatrix in TransMatrices[::-1]:
-        res = transMatrix.evalf(subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6}) * res
+        res = transMatrix.evalf(
+            subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6}) * res
     return res[0], res[1], res[2]
 
 
 def solveInverse(M06):
+    """Given the final 0M6 transition matrix for the working tip returns the angles of the robot joints. The formulas
+    are pre-calculated."""
     ((ix, jx, kx, px), (iy, jy, ky, py), (iz, jz, kz, pz), (_, _, _, _)) = M06  # Get data from M06
 
     # Calculate th1
@@ -65,7 +75,7 @@ def solveInverse(M06):
     D = 443 / 2000
     E = 3 / 100
     th3 = asin(((A ** 2 + D ** 2 + E ** 2) - (B ** 2 + C ** 2)) / (2 * A * sqrt(D ** 2 + E ** 2))) + atan(E / D)
-    
+
     # Calculate th2
     F = D - A * sin(th3)
     if C >= 0:
@@ -99,6 +109,8 @@ def solveInverse(M06):
 
 
 def Jacobian(M):
+    """Given the list of the Transition Matrices returns the Jacobian Matrix for the robot."""
+
     z0 = sp.Matrix([0, 0, 1])
     z1 = sp.Matrix([M[0][0][2], M[0][1][2], M[0][2][2]])
     t1 = sp.Matrix([M[0][0][3], M[0][1][3], M[0][2][3]])
@@ -113,12 +125,15 @@ def Jacobian(M):
     # z6 = sp.Matrix([sMf(M, 0, 6)[0][0][2], sMf(M, 0, 6)[0][1][2], sMf(M, 0, 6)[0][2][2]])
     t6 = sp.Matrix([sMf(M, 0, 6)[0][3], sMf(M, 0, 6)[1][3], sMf(M, 0, 6)[2][3]])
     return sp.Matrix([
-        [z0.dot(t6)[0],  z1.dot(t6-t1)[0],  z2.dot(t6-t2)[0],  z3.dot(t6-t3)[0],  z4.dot(t6-t4)[0],  z5.dot(t6-t5)[0] ],
-        [z0.dot(t6)[1],  z1.dot(t6-t1)[1],  z2.dot(t6-t2)[1],  z3.dot(t6-t3)[1],  z4.dot(t6-t4)[1],  z5.dot(t6-t5)[1] ],
-        [z0.dot(t6)[2],  z1.dot(t6-t1)[2],  z2.dot(t6-t2)[2],  z3.dot(t6-t3)[2],  z4.dot(t6-t4)[2],  z5.dot(t6-t5)[2] ],
-        [z0[0],          z1[0],             z2[0],             z3[0],             z4[0],             z5[0]            ],
-        [z0[1],          z1[1],             z2[1],             z3[1],             z4[1],             z5[1]            ],
-        [z0[2],          z1[2],             z2[2],             z3[2],             z4[2],             z5[2]            ]
+        [z0.dot(t6)[0], z1.dot(t6 - t1)[0], z2.dot(t6 - t2)[0], z3.dot(t6 - t3)[0], z4.dot(t6 - t4)[0],
+         z5.dot(t6 - t5)[0]],
+        [z0.dot(t6)[1], z1.dot(t6 - t1)[1], z2.dot(t6 - t2)[1], z3.dot(t6 - t3)[1], z4.dot(t6 - t4)[1],
+         z5.dot(t6 - t5)[1]],
+        [z0.dot(t6)[2], z1.dot(t6 - t1)[2], z2.dot(t6 - t2)[2], z3.dot(t6 - t3)[2], z4.dot(t6 - t4)[2],
+         z5.dot(t6 - t5)[2]],
+        [z0[0], z1[0], z2[0], z3[0], z4[0], z5[0]],
+        [z0[1], z1[1], z2[1], z3[1], z4[1], z5[1]],
+        [z0[2], z1[2], z2[2], z3[2], z4[2], z5[2]]
     ])
 
 
