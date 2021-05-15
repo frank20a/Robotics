@@ -50,11 +50,17 @@ def printEval(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
 
 def solveDirect(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
     """Given the list of Transition Matrices and the joint angles, return the position of the working tip."""
-    res = np.array([[0], [0], [0], [1]])
+    res = np.array([
+        [1, 1, 1, 0],
+        [1, 1, 1, 0],
+        [1, 1, 1, 0],
+        [0, 0, 0, 1]
+    ])
+
     for transMatrix in TransMatrices[::-1]:
-        res = transMatrix.evalf(
-            subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6}) * res
-    return res[0], res[1], res[2]
+        res = np.array(transMatrix.evalf(
+            subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6})) * res
+    return res
 
 
 def solveInverse(M06):
