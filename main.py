@@ -1,7 +1,6 @@
 import numpy as np
-from sympy import sin, cos, tan, atan, atan2, acos, asin, sqrt, pi, oo
+from sympy import sin, cos, tan, atan, atan2, acos, asin, sqrt, pi, oo, sign
 from data import *
-from inverse import inverse_kinematic
 import pandas as pd
 
 sp.init_printing(use_unicode=True)
@@ -42,14 +41,18 @@ def sMf(TransMatrices, s: int = 0, f: int = 6):
     return res
 
 
-def printEval(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
+def printEval(TransMatrices, theta: tuple):
     """Print the Transition Matrices after evaluating symbolic variables with constants."""
+    theta1, theta2, theta3, theta4, theta5, theta6 = theta
+
     for i in TransMatrices:
         print(i.evalf(subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6}))
 
 
-def solveDirect(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
+def solveDirect(TransMatrices, theta: tuple):
     """Given the list of Transition Matrices and the joint angles, return the position of the working tip."""
+    theta1, theta2, theta3, theta4, theta5, theta6 = theta
+
     res = np.array([
         [1, 1, 1, 0],
         [1, 1, 1, 0],
@@ -61,6 +64,102 @@ def solveDirect(TransMatrices, theta1, theta2, theta3, theta4, theta5, theta6):
         res = np.array(transMatrix.evalf(
             subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6})) * res
     return res
+
+
+def inverse_kinematic(M06, TransMatrices):
+    """Given the final 0M6 transition matrix for the working tip returns the angles of the robot joints. The formulas
+    are pre-calculated."""
+
+    solutions = []
+    tests = inverse_solutions(M06)
+
+    for test in tests:
+        error = sum(abs(M06 - solveDirect(test))) > 1e-15
+        lims = any([abs(test[0]) > 175*pi/180,
+                   -pi/2 > test[1] > 36.7*pi/180,
+                    -80*pi/180 > test[2] > pi/2,
+                   test[3] > 175*pi/180,
+                   test[4] < -100*pi/180,
+                   abs(test[5] > 147.5*pi/180)])
+
+        if not (error or lims): solutions.append(test)
+
+
+def inverse_solutions(M06):
+    """Solves inverse kinematic problem and returns list with all the possible solutions"""
+    ((ix, jx, kx, px), (iy, jy, ky, py), (iz, jz, kz, pz), (_, _, _, _)) = M06  # Get data from M06
+
+    # Calculate 2 th1 solutions
+    th1s = []
+    tmp = atan((-237 * ky + 1e4 * py) / (-237 * kx + 1e4 * px))
+    th1s.append([tmp])
+    if (-237 * ky + 1e4 * py) / (-237 * kx + 1e4 * px) > 0:
+        th1s.append([tmp - pi])
+    elif (-237 * ky + 1e4 * py) / (-237 * kx + 1e4 * px) < 0:
+        th1s.append([tmp + pi])
+
+    # Calculate 2 th3 solutions (1 per)
+    A = 21 / 100
+    C = 183 / 1e3 + (237 * kz / 1e4) - pz
+    D = 443 / 2000
+    E = 3 / 100
+
+    th3s = []
+    for th1, in th1s:
+        B = px * cos(th1) + py * sin(th1) - (237 / 1e4) * (kx * cos(th1) + ky * sin(th1))
+        th3s.append([th1,
+                     asin(((A ** 2 + D ** 2 + E ** 2) - (B ** 2 + C ** 2)) / (2 * A * sqrt(D ** 2 + E ** 2))) + atan(
+                         E / D)])
+
+    # Calculate 4 th2 solutions (2 per)
+    th2s = []
+    for th1, th3 in th3s:
+        B = px * cos(th1) + py * sin(th1) - (237 / 1e4) * (kx * cos(th1) + ky * sin(th1))
+        F = D - A * sin(th3)
+
+        if C != 0 and B != 0:
+            tmp1 = sign(C) * asin(F / sqrt(B ^ 2 + C ^ 2)) - sign(B) * sign(C) * atan(abs(B / C)) - th3
+            tmp2 = (pi - sign(C) * asin(F / sqrt(B ^ 2 + C ^ 2))) - sign(B) * sign(C) * atan(abs(B / C)) - th3
+        elif C == 0:
+            tmp1 = acos(F / B) - th3
+            tmp2 = -acos(F / B) - th3
+        elif B == 0:
+            tmp1 = asin(F / C) - th3
+            tmp2 = (pi - asin(F / C)) - th3
+        th2s.append([th1, tmp1, th3])
+        th2s.append([th1, tmp2, th3])
+
+    # Calculate 8 th5 solutions (2 per)
+    th5s = []
+    for th1, th2, th3 in th2s:
+        tmp = acos(kx * cos(th1) * cos(th2) * cos(th3) - kz * cos(th3) * sin(th2) - kz * cos(th2) * sin(th3) + ky * cos(
+            th2) * cos(th3) * sin(th1) - kx * cos(th1) * sin(th2) * sin(th3) - ky * sin(th1) * sin(th2) * sin(th3))
+        th5s.append([th1, th2, th3, tmp])
+        th5s.append([th1, th2, th3, -tmp])
+
+    # Calculate 16 th4 solutions (2 per)
+    th4s = []
+    for th1, th2, th3, th5 in th5s:
+        if th5 != 0:
+            tmp = asin((ky * cos(th1) - kx * sin(th1)) / sin(th5))
+            th4s.append([th1, th2, th3, tmp, th5])
+            th4s.append([th1, th2, th3, pi - tmp, th5])
+        else:
+            th4s.append([th1, th2, th3, 0, th5])
+
+    # Calculate 32 th6 solutions (2 per)
+    solutions = []
+    for th1, th2, th3, th4, th5 in th4s:
+        tmp = asin(ix * cos(th4) * sin(th1) - iy * cos(th1) * cos(th4) - iz * cos(th2) * cos(
+            th3) * sin(th4) + iz * sin(th2) * sin(th3) * sin(th4) - ix * cos(th1) * cos(
+            th2) * sin(th3) * sin(th4) - ix * cos(th1) * cos(th3) * sin(th2) * sin(
+            th4) - iy * cos(th2) * sin(th1) * sin(th3) * sin(th4) - iy * cos(th3) * sin(
+            th1) * sin(th2) * sin(th4))
+
+        solutions.append((th1, th2, th3, th4, th5, tmp))
+        solutions.append((th1, th2, th3, th4, th5, pi - tmp))
+
+    return solutions
 
 
 def Jacobian(M):
@@ -119,4 +218,4 @@ def getTrajectory(start, finish, T, Ts=0.05, filename=None):
 
 
 M = parseDH2TransMatrix(DH_Table)
-print(solveDirect(M, 0, 0, 0, 0, 0, 0))
+print(solveDirect(M, (0, 0, 0, 0, 0, 0)))
