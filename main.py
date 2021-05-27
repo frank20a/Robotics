@@ -268,7 +268,9 @@ def getTrajectoryCoeffs(s, p1, p2, f, t):
     return a, b, c, d
 
 
-def getTrajectory(TransMatrices, S, P1, P2, F, t: tuple, Ts=0.05, filename=None):
+def getTrajectory(TransMatrices, S, P1, P2, F, t: tuple, Ts=0.05, degrees: bool = False, filename: str = None,
+                  humane: bool = False):
+
     t2, t3, t4 = t
     T12 = np.arange(0, t2, Ts)
     T23 = np.arange(t2, t3, Ts)
@@ -289,46 +291,47 @@ def getTrajectory(TransMatrices, S, P1, P2, F, t: tuple, Ts=0.05, filename=None)
     for i, Tt in enumerate((T12, T23, T34)):
         temp = pd.DataFrame(columns=['th1', 'th2', 'th3', 'th4', 'th5', 'th6'], dtype='float64')
         for n, col in enumerate(temp.columns):
-            temp[col] = (A[i, n] + B[i, n]*Tt + C[i, n]*(Tt**2) + D[i, n]*(Tt**3)) * pi.evalf(4) / 180
+            temp[col] = (A[i, n] + B[i, n]*Tt + C[i, n]*(Tt**2) + D[i, n]*(Tt**3)) * (180 if degrees else 1)
         trajectory = trajectory.append(temp, ignore_index=True)
 
-    print(trajectory)
+    # print(trajectory)
 
     if filename is not None:
         with open(str('./trajectories/' + filename + '.csv'), 'w', encoding='utf-8') as file:
-            trajectory.to_csv(path_or_buf=file, index=False)
+            trajectory.to_csv(path_or_buf=file, index=False, header=humane, line_terminator='\n')
     else:
         return trajectory
 
 
-M = parseDH2TransMatrix(DH_Table)
+if __name__ == '__main__':
+    M = parseDH2TransMatrix(DH_Table)
 
-Start = np.array([
-    [0,  0,  1,  (287.5 - 83.62) * 1e-3],
-    [0, -1,  0,  62.5e-3],
-    [1,  0,  0,  275e-3],
-    [0,  0,  0,  1]
-])
+    Start = np.array([
+        [0,  0,  1,  (287.5 - 83.62) * 1e-3],
+        [0, -1,  0,  62.5e-3],
+        [1,  0,  0,  275e-3],
+        [0,  0,  0,  1]
+    ])
 
-P1 = np.array([
-    [0,  0,  1,  (287.5 - 83.62) * 1e-3],
-    [0, -1,  0,  62.5e-3],
-    [1,  0,  0,  300e-3],
-    [0,  0,  0,  1]
-])
+    P1 = np.array([
+        [0,  0,  1,  (287.5 - 83.62) * 1e-3],
+        [0, -1,  0,  62.5e-3],
+        [1,  0,  0,  300e-3],
+        [0,  0,  0,  1]
+    ])
 
-P2 = np.array([
-    [0,  0,  1,  (170 - 83.62) * 1e-3],
-    [-1, 0,  0,  62.5e-3],
-    [0, -1,  0,  300e-3],
-    [0,  0,  0,  1]
-])
+    P2 = np.array([
+        [0,  0,  1,  (170 - 83.62) * 1e-3],
+        [-1, 0,  0,  62.5e-3],
+        [0, -1,  0,  300e-3],
+        [0,  0,  0,  1]
+    ])
 
-Finish = np.array([
-    [0,  0, 1,  (170 - 83.62) * 1e-3],
-    [-1, 0, 0,  220e-3],
-    [0, -1, 0,  300e-3],
-    [0,  0, 0,  1]
-])
+    Finish = np.array([
+        [0,  0, 1,  (170 - 83.62) * 1e-3],
+        [-1, 0, 0,  220e-3],
+        [0, -1, 0,  300e-3],
+        [0,  0, 0,  1]
+    ])
 
-getTrajectory(M, Start, P1, P2, Finish, (2, 4, 6), filename='test1')
+    getTrajectory(M, Start, P1, P2, Finish, (2, 4, 6), filename='test1')
