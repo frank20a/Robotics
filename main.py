@@ -37,7 +37,7 @@ def sMf(TransMatrices, s: int = 0, f: int = 6):
 
     res = TransMatrices[s]
     for i in TransMatrices[s + 1:f]:
-        res = res * i   # Multiply TransMatrix's
+        res = np.matmul(res, i)   # Multiply TransMatrix's
     return res
 
 
@@ -46,23 +46,20 @@ def printEval(TransMatrices, theta: tuple):
     theta1, theta2, theta3, theta4, theta5, theta6 = theta
 
     for i in TransMatrices:
-        print(i.evalf(subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6}))
+        print(np.array(i.evalf(subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6})), end='\n\n')
+
 
 
 def solveDirect(TransMatrices, theta):
     """Given the list of Transition Matrices and the joint angles, return the position of the working tip."""
     theta1, theta2, theta3, theta4, theta5, theta6 = theta
 
-    res = np.array([
-        [1, 1, 1, 0],
-        [1, 1, 1, 0],
-        [1, 1, 1, 0],
-        [0, 0, 0, 1]
-    ])
+    res = np.array(TransMatrices[0].evalf(
+            subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6}))
 
-    for transMatrix in TransMatrices[::-1]:
-        res = np.array(transMatrix.evalf(
-            subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6})) * res
+    for transMatrix in TransMatrices[1:]:
+        res = np.matmul(res, np.array(transMatrix.evalf(
+            subs={th1: theta1, th2: theta2, th3: theta3, th4: theta4, th5: theta5, th6: theta6})))
 
     return res
 
@@ -82,7 +79,11 @@ def inverse_kinematic(M06, TransMatrices):
         else:
             test = [v.real for v in test]
 
-        error = sum(sum(abs(M06 - solveDirect(TransMatrices, test)))) > 1e-2
+        # error = any(abs(M06 - solveDirect(TransMatrices, test)) > 1e-2)
+        for i in abs(M06 - solveDirect(TransMatrices, test)) > 1e-2:
+            for j in i:
+                if j: continue
+                
         lims = bool(any((abs(test[0]) > 175*pi/180,
                    -pi/2 > test[1] > 36.7*pi/180,
                     -80*pi/180 > test[2] > pi/2,
@@ -92,9 +93,14 @@ def inverse_kinematic(M06, TransMatrices):
 
         if not lims:
             solutions.append(test)
-
-    # print(solutions)
-    return np.array(solutions[0])
+    
+##    for sol in solutions:
+##        for angle in sol:
+##            print("{0:.2f}".format(angle*180/pi.evalf(3)), end=', ')
+##        print()
+##    print('=====================================')
+    
+    return np.array(solutions[1])
 
 
 def inverse_solutions(M06, TransMatrices):
@@ -236,12 +242,10 @@ def getTrajectoryCoeffs(s, p1, p2, f, t):
 
     # Calculate angular speeds at intermediate points
     dP1 = ((6 * (t3 + t4) / (t2 * t3)) * ((t2 ** 2) * (p2 - p1) + (t3 ** 2) * (p1 - s)) - (3 * t2 / (t3 * t4)) * (
-            (t3 ** 2) * (f - p2) + (t4 ** 2) * (p2 - p1))) / (
-                  4 * t2 * t3 + 3 * t2 * t4 + 4 * t3 * t4 + 4 * t3 ** 2)
+            (t3 ** 2) * (f - p2) + (t4 ** 2) * (p2 - p1))) / (4 * t2 * t3 + 3 * t2 * t4 + 4 * t3 * t4 + 4 * t3 ** 2)
 
     dP2 = (-(3 * t4 / (t2 * t3)) * ((t2 ** 2) * (p2 - p1) + (t3 ** 2) * (p1 - s)) + (6 * (t2 + t3) / (t3 * t4)) * (
-            (t3 ** 2) * (f - p2) + (t4 ** 2) * (p2 - p1))) / (
-                  4 * t2 * t3 + 3 * t2 * t4 + 4 * t3 * t4 + 4 * t3 ** 2)
+            (t3 ** 2) * (f - p2) + (t4 ** 2) * (p2 - p1))) / (4 * t2 * t3 + 3 * t2 * t4 + 4 * t3 * t4 + 4 * t3 ** 2)
 
     dF = np.zeros(6)
 
@@ -252,11 +256,11 @@ def getTrajectoryCoeffs(s, p1, p2, f, t):
     d = np.zeros((3, 6))
 
     a[0, :] = s
-    c[0, :] = (3 / (t2 ** 2)) * (p1 - s) - (1 / t2) * dP2
-    d[0, :] = (-2 / (t2 ** 3)) * (p1 - s) + (1 / (t2 ** 2)) * dP2
+    c[0, :] = (3 / (t2 ** 2)) * (p1 - s) - (1 / t2) * dP1
+    d[0, :] = (-2 / (t2 ** 3)) * (p1 - s) + (1 / (t2 ** 2)) * dP1
 
     a[1, :] = p1
-    b[1, :] = dP2
+    b[1, :] = dP1
     c[1, :] = (3 / (t3 ** 2)) * (p2 - p1) - (2 / t3) * dP1 - (1 / t3) * dP2
     d[1, :] = (-2 / (t3 ** 3)) * (p2 - p1) + (1 / (t3 ** 2)) * (dP2 + dP1)
 
@@ -284,6 +288,11 @@ def getTrajectory(TransMatrices, S, P1, P2, F, t: tuple, Ts=0.05, degrees: bool 
 
     # Get Coeffs
     A, B, C, D = getTrajectoryCoeffs(s, p1, p2, f, t)
+    print(B)
+    print()
+    print(C)
+    print()
+    print(D)
 
     # Create polynomials
     trajectory = pd.DataFrame(columns=['th1', 'th2', 'th3', 'th4', 'th5', 'th6'], dtype='float64')
@@ -291,7 +300,7 @@ def getTrajectory(TransMatrices, S, P1, P2, F, t: tuple, Ts=0.05, degrees: bool 
     for i, Tt in enumerate((T12, T23, T34)):
         temp = pd.DataFrame(columns=['th1', 'th2', 'th3', 'th4', 'th5', 'th6'], dtype='float64')
         for n, col in enumerate(temp.columns):
-            temp[col] = (A[i, n] + B[i, n]*Tt + C[i, n]*(Tt**2) + D[i, n]*(Tt**3)) * (180 if degrees else 1)
+            temp[col] = (A[i, n] + B[i, n]*Tt + C[i, n]*(Tt**2) + D[i, n]*(Tt**3)) * ((180 / pi.evalf(5)) if degrees else 1)
         trajectory = trajectory.append(temp, ignore_index=True)
 
     # print(trajectory)
@@ -333,5 +342,22 @@ if __name__ == '__main__':
         [0, -1, 0,  300e-3],
         [0,  0, 0,  1]
     ])
+    
+    trajectory = getTrajectory(M, Start, P1, P2, Finish, (2, 4, 6))
+    
+##    with open('./trajectories/test1.csv', 'r', encoding='utf8') as f:
+##        trajectory = pd.read_csv(f)
+    xyz = []
+    for i in range(120):
+        tmp = trajectory.iloc[i]
+        xyz.append(np.matmul(solveDirect(M, (tmp.iloc[0], tmp.iloc[1], tmp.iloc[2], tmp.iloc[3], tmp.iloc[4], tmp.iloc[5])), [[0],[0],[0],[1]]))
 
-    getTrajectory(M, Start, P1, P2, Finish, (2, 4, 6), filename='test1')
+    with open('./trajectories/test2.csv', 'w', encoding='utf8') as f:
+        for pos in xyz:
+            f.write(str(pos[0]).strip('[]'))
+            f.write(', ')
+            f.write(str(pos[1]).strip('[]'))
+            f.write(', ')
+            f.write(str(pos[1]).strip('[]'))
+            f.write('\n')
+        

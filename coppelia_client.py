@@ -4,6 +4,8 @@ from main import *
 from time import sleep
 import pandas as pd
 
+# simRemoteApi.start(26223)
+
 sim.simxFinish(-1)
 clientID = sim.simxStart('127.0.0.1', 26223, True, True, 5000, 5)
 
@@ -20,7 +22,7 @@ if clientID != -1:
 
     # Read Trajectories
     with open('./trajectories/test1.csv', 'r', encoding='utf-8') as file:
-        trajectory = pd.from_csv(file)
+        trajectory = pd.read_csv(file)
         print("Got Trajectory... Resetting")
 
     # Reset Joints
@@ -30,7 +32,7 @@ if clientID != -1:
 
     # Iterate Trajectory
     print("Starting motion")
-    for i in range(120):
+    for i in range(119):
         sim.simxPauseCommunication(clientID, True)
         for n, joint in enumerate(joints):
             # print(row)
