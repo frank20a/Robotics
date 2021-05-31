@@ -237,79 +237,67 @@ def get2PTrajectory(TransMatrices, start, finish, T, Ts=0.05, filename=None):
         return trajectory
 
 
-def getTrajectoryCoeffs(s, p1, p2, f, t):
-    t2, t3, t4 = t
-
-    # Calculate angular speeds at intermediate points
-    dP1 = ((6 * (t3 + t4) / (t2 * t3)) * ((t2 ** 2) * (p2 - p1) + (t3 ** 2) * (p1 - s)) - (3 * t2 / (t3 * t4)) * (
-            (t3 ** 2) * (f - p2) + (t4 ** 2) * (p2 - p1))) / (4 * t2 * t3 + 3 * t2 * t4 + 4 * t3 * t4 + 4 * t3 ** 2)
-
-    dP2 = (-(3 * t4 / (t2 * t3)) * ((t2 ** 2) * (p2 - p1) + (t3 ** 2) * (p1 - s)) + (6 * (t2 + t3) / (t3 * t4)) * (
-            (t3 ** 2) * (f - p2) + (t4 ** 2) * (p2 - p1))) / (4 * t2 * t3 + 3 * t2 * t4 + 4 * t3 * t4 + 4 * t3 ** 2)
-
-    dF = np.zeros(6)
-
-    # Calculate Polynomial Coeffs
-    a = np.zeros((3, 6))
-    b = np.zeros((3, 6))
-    c = np.zeros((3, 6))
-    d = np.zeros((3, 6))
-
-    a[0, :] = s
-    c[0, :] = (3 / (t2 ** 2)) * (p1 - s) - (1 / t2) * dP1
-    d[0, :] = (-2 / (t2 ** 3)) * (p1 - s) + (1 / (t2 ** 2)) * dP1
-
-    a[1, :] = p1
-    b[1, :] = dP1
-    c[1, :] = (3 / (t3 ** 2)) * (p2 - p1) - (2 / t3) * dP1 - (1 / t3) * dP2
-    d[1, :] = (-2 / (t3 ** 3)) * (p2 - p1) + (1 / (t3 ** 2)) * (dP2 + dP1)
-
-    a[2, :] = p2
-    b[2, :] = dP2
-    c[2, :] = (3 / (t4 ** 2)) * (f - p2) - (2 / t4) * dP2 - (1 / t4) * dF
-    d[2, :] = (-2 / (t4 ** 3)) * (f - p2) + (1 / (t4 ** 2)) * (dF + dP2)
-
-    return a, b, c, d
-
-
-def getTrajectory(TransMatrices, S, P1, P2, F, t: tuple, Ts=0.05, degrees: bool = False, filename: str = None,
-                  humane: bool = False):
-
-    t2, t3, t4 = t
-    T12 = np.arange(0, t2, Ts)
-    T23 = np.arange(t2, t3, Ts)
-    T34 = np.arange(t3, t4, Ts)
-
-    # Solve Inverse Kinematic for trajectory points
-    s = inverse_kinematic(S, TransMatrices)
-    p1 = inverse_kinematic(P1, TransMatrices)
-    p2 = inverse_kinematic(P2, TransMatrices)
-    f = inverse_kinematic(F, TransMatrices)
-
-    # Get Coeffs
-    A, B, C, D = getTrajectoryCoeffs(s, p1, p2, f, t)
-    print(B)
-    print()
-    print(C)
-    print()
-    print(D)
-
-    # Create polynomials
-    trajectory = pd.DataFrame(columns=['th1', 'th2', 'th3', 'th4', 'th5', 'th6'], dtype='float64')
-
-    for i, Tt in enumerate((T12, T23, T34)):
-        temp = pd.DataFrame(columns=['th1', 'th2', 'th3', 'th4', 'th5', 'th6'], dtype='float64')
-        for n, col in enumerate(temp.columns):
-            temp[col] = (A[i, n] + B[i, n]*Tt + C[i, n]*(Tt**2) + D[i, n]*(Tt**3)) * ((180 / pi.evalf(5)) if degrees else 1)
-        trajectory = trajectory.append(temp, ignore_index=True)
-
-    # print(trajectory)
-
-    if filename is not None:
-        with open(str('./trajectories/' + filename + '.csv'), 'w', encoding='utf-8') as file:
-            trajectory.to_csv(path_or_buf=file, index=False, header=humane, line_terminator='\n')
-    else:
-        return trajectory
+# def getTrajectoryCoeffs(TH1, TH2, TH3, TH4, t):
+#     t2, t3, t4 = t
+#
+#     # Calculate Polynomial Coeffs
+#     a = np.zeros((3, 6))
+#     b = np.zeros((3, 6))
+#     c = np.zeros((3, 6))
+#     d = np.zeros((3, 6))
+#
+#     a[0, :] = TH1
+#     c[0, :] = (3*(TH3*t2**4 - TH4*t2**4 + TH1*t2**2*t3**2 - TH1*t2**2*t4**2 + 2*TH1*t3**2*t4**2 - 2*TH2*t3**2*t4**2 + TH3*t2**2*t4**2 - TH4*t2**2*t3**2 + TH1*t2*t3**3 - 2*TH1*t2**3*t3 + 2*TH1*t2**3*t4 - TH2*t2*t3**3 - 2*TH1*t3**3*t4 + 2*TH2*t3**3*t4 - 2*TH3*t2**3*t4 + 2*TH4*t2**3*t3 - TH1*t2*t3*t4**2 + TH2*t2*t3*t4**2))/(t2**2*(t2 - t3)*(t3 - t4)*(3*t2*t3 + t2*t4 - 4*t3*t4))
+#     d[0, :] = - (3*TH3*t2**4 - 3*TH4*t2**4 + 6*TH1*t2**2*t3**2 - 4*TH1*t2**2*t4**2 - 3*TH2*t2**2*t3**2 + 2*TH1*t3**2*t4**2 + TH2*t2**2*t4**2 - 2*TH2*t3**2*t4**2 + 3*TH3*t2**2*t4**2 - 3*TH4*t2**2*t3**2 - 6*TH1*t2**3*t3 + 6*TH1*t2**3*t4 - 2*TH1*t3**3*t4 + 2*TH2*t3**3*t4 - 6*TH3*t2**3*t4 + 6*TH4*t2**3*t3 + 2*TH1*t2*t3*t4**2 - 2*TH1*t2*t3**2*t4 - 2*TH1*t2**2*t3*t4 - 2*TH2*t2*t3*t4**2 + 2*TH2*t2*t3**2*t4 + 2*TH2*t2**2*t3*t4)/(t2**3*(t2 - t3)*(t3 - t4)*(3*t2*t3 + t2*t4 - 4*t3*t4))
+#
+#     a[1, :] = - (3*TH1*t2**2*t3**3 - 6*TH1*t3**3*t4**2 + 2*TH2*t3**3*t4**2 + TH3*t2**3*t4**2 + 3*TH4*t2**2*t3**3 - 3*TH4*t2**3*t3**2 - 3*TH1*t2*t3**4 + 6*TH1*t3**4*t4 - 2*TH2*t3**4*t4 - 6*TH1*t2*t3**3*t4 + 2*TH3*t2**3*t3*t4 + 9*TH1*t2*t3**2*t4**2 - 3*TH1*t2**2*t3*t4**2 - 3*TH3*t2**2*t3*t4**2)/((t2 - t3)**2*(t3 - t4)*(3*t2*t3 + t2*t4 - 4*t3*t4))
+#     b[1, :] = - (3*(3*TH1*t2**2*t3**3 - 3*TH1*t2**3*t3**2 + TH1*t2**3*t4**2 + 2*TH1*t3**3*t4**2 - 2*TH2*t3**3*t4**2 - TH3*t2**3*t4**2 - 3*TH4*t2**2*t3**3 + 3*TH4*t2**3*t3**2 - 2*TH1*t3**4*t4 + 2*TH2*t3**4*t4 + 2*TH1*t2**3*t3*t4 - 2*TH3*t2**3*t3*t4 - 3*TH1*t2**2*t3*t4**2 + 3*TH3*t2**2*t3*t4**2))/(t2*(t2 - t3)**2*(t3 - t4)*(3*t2*t3 + t2*t4 - 4*t3*t4))
+#     c[1, :] = - (3*(TH1*t3**4 - TH2*t3**4 - TH3*t2**4 + TH4*t2**4 - 3*TH1*t3**2*t4**2 + 3*TH2*t3**2*t4**2 - 3*TH1*t2*t3**3 + 2*TH1*t2**3*t3 - 2*TH1*t2**3*t4 + TH2*t2*t3**3 + 2*TH1*t3**3*t4 + TH3*t2**3*t3 - 2*TH2*t3**3*t4 + 2*TH3*t2**3*t4 + 2*TH4*t2*t3**3 - 3*TH4*t2**3*t3 + 3*TH1*t2*t3*t4**2 - TH2*t2*t3*t4**2 - 2*TH3*t2*t3*t4**2))/(t2*(t2 - t3)**2*(t3 - t4)*(3*t2*t3 + t2*t4 - 4*t3*t4))
+#     d[1, :] = (3*TH1*t3**3 - 3*TH2*t3**3 - 3*TH3*t2**3 + 3*TH4*t2**3 - 9*TH1*t2*t3**2 + 6*TH1*t2**2*t3 + 3*TH1*t2*t4**2 - 6*TH1*t2**2*t4 + 3*TH2*t2*t3**2 - 3*TH1*t3*t4**2 - TH2*t2*t4**2 + 3*TH3*t2**2*t3 + 3*TH2*t3*t4**2 - 2*TH3*t2*t4**2 + 6*TH3*t2**2*t4 + 6*TH4*t2*t3**2 - 9*TH4*t2**2*t3 + 6*TH1*t2*t3*t4 - 2*TH2*t2*t3*t4 - 4*TH3*t2*t3*t4)/(t2*(t2 - t3)**2*(t3 - t4)*(3*t2*t3 + t2*t4 - 4*t3*t4))
+#
+#     a[2, :] = (3*TH1*t3**3*t4**4 - 6*TH1*t3**4*t4**3 + 3*TH1*t3**5*t4**2 - 3*TH2*t3**3*t4**4 + 6*TH2*t3**4*t4**3 - 3*TH2*t3**5*t4**2 - TH3*t2**3*t4**4 - 3*TH4*t2**2*t3**5 + 3*TH4*t2**3*t3**4 - 6*TH1*t2**2*t3**2*t4**3 + 3*TH1*t2**2*t3**3*t4**2 - 6*TH3*t2**2*t3**2*t4**3 + 3*TH3*t2**3*t3**2*t4**2 + 3*TH4*t2**2*t3**3*t4**2 + 3*TH4*t2**3*t3**2*t4**2 + 4*TH4*t2*t3**5*t4 - 6*TH1*t2*t3**2*t4**4 + 12*TH1*t2*t3**3*t4**3 - 6*TH1*t2*t3**4*t4**2 + 3*TH1*t2**2*t3*t4**4 + 2*TH3*t2*t3**2*t4**4 + 2*TH3*t2**2*t3*t4**4 - 6*TH4*t2*t3**4*t4**2 + 4*TH4*t2**2*t3**4*t4 - 8*TH4*t2**3*t3**3*t4)/(t2*(t2 - t3)*(t3 - t4)**3*(3*t2*t3 + t2*t4 - 4*t3*t4))
+#     b[2, :] = (3*t4*(2*TH2*t3**5 - 2*TH1*t3**5 - 2*TH1*t2**2*t3**3 - TH1*t2**2*t4**3 - TH1*t3**2*t4**3 - 2*TH3*t2**3*t3**2 + TH2*t3**2*t4**3 + TH3*t2**2*t4**3 + 2*TH4*t2**2*t3**3 + 2*TH4*t2**3*t3**2 + 4*TH1*t2*t3**4 + 3*TH1*t3**4*t4 - 3*TH2*t3**4*t4 - 4*TH4*t2*t3**4 + 2*TH1*t2*t3*t4**3 - 6*TH1*t2*t3**3*t4 - 2*TH3*t2*t3*t4**3 + 6*TH4*t2*t3**3*t4 + 3*TH1*t2**2*t3**2*t4 + 3*TH3*t2**2*t3**2*t4 - 6*TH4*t2**2*t3**2*t4))/(t2*(t2 - t3)*(t3 - t4)**3*(3*t2*t3 + t2*t4 - 4*t3*t4))
+#     c[2, :] = -(3*(TH2*t3**5 - TH1*t3**5 - TH1*t2**2*t3**3 - 2*TH1*t2**2*t4**3 - 2*TH1*t3**2*t4**3 + 3*TH1*t3**3*t4**2 - TH3*t2**3*t3**2 + 2*TH2*t3**2*t4**3 - 3*TH2*t3**3*t4**2 + 2*TH3*t2**2*t4**3 - TH3*t2**3*t4**2 + TH4*t2**2*t3**3 + TH4*t2**3*t3**2 + TH4*t2**3*t4**2 + 2*TH1*t2*t3**4 - 2*TH4*t2*t3**4 + 4*TH1*t2*t3*t4**3 - 4*TH3*t2*t3*t4**3 - 6*TH1*t2*t3**2*t4**2 + 3*TH1*t2**2*t3*t4**2 + 2*TH3*t2*t3**2*t4**2 + 2*TH3*t2**2*t3*t4**2 + 4*TH4*t2*t3**2*t4**2 - 5*TH4*t2**2*t3*t4**2))/(t2*(t2 - t3)*(t3 - t4)**3*(3*t2*t3 + t2*t4 - 4*t3*t4))
+#     d[2, :] = (3*TH2*t3**4 - 3*TH1*t3**4 - 3*TH1*t2**2*t3**2 - 3*TH1*t2**2*t4**2 - 3*TH1*t3**2*t4**2 - 3*TH3*t2**2*t3**2 + 3*TH2*t3**2*t4**2 + 3*TH3*t2**2*t4**2 + 6*TH4*t2**2*t3**2 + 6*TH1*t2*t3**3 + 6*TH1*t3**3*t4 - 6*TH2*t3**3*t4 - 2*TH3*t2**3*t4 - 6*TH4*t2*t3**3 + 2*TH4*t2**3*t4 + 6*TH1*t2*t3*t4**2 - 12*TH1*t2*t3**2*t4 + 6*TH1*t2**2*t3*t4 - 6*TH3*t2*t3*t4**2 + 4*TH3*t2*t3**2*t4 + 4*TH3*t2**2*t3*t4 + 8*TH4*t2*t3**2*t4 - 10*TH4*t2**2*t3*t4)/(t2*(t2 - t3)*(t3 - t4)**3*(3*t2*t3 + t2*t4 - 4*t3*t4))
+#
+#     return a, b, c, d
+#
+#
+# def getTrajectory(TransMatrices, S, P1, P2, F, t: tuple, Ts=0.05, degrees: bool = False, filename: str = None,
+#                   humane: bool = False):
+#
+#     t2, t3, t4 = t
+#     T12 = np.arange(0, t2, Ts)
+#     T23 = np.arange(t2, t3, Ts)
+#     T34 = np.arange(t3, t4, Ts)
+#
+#     # Solve Inverse Kinematic for trajectory points
+#     s = inverse_kinematic(S, TransMatrices)
+#     p1 = inverse_kinematic(P1, TransMatrices)
+#     p2 = inverse_kinematic(P2, TransMatrices)
+#     f = inverse_kinematic(F, TransMatrices)
+#
+#     # Get Coeffs
+#     A, B, C, D = getTrajectoryCoeffs(s, p1, p2, f, t)
+#
+#     # Create polynomials
+#     trajectory = pd.DataFrame(columns=['th1', 'th2', 'th3', 'th4', 'th5', 'th6'], dtype='float64')
+#
+#     for i, Tt in enumerate((T12, T23, T34)):
+#         temp = pd.DataFrame(columns=['th1', 'th2', 'th3', 'th4', 'th5', 'th6'], dtype='float64')
+#         for n, col in enumerate(temp.columns):
+#             temp[col] = (A[i, n] + B[i, n]*Tt + C[i, n]*(Tt**2) + D[i, n]*(Tt**3) - (pi/2 if n == 1 else 0)) * \
+#                         ((180 / pi) if degrees else 1)
+#
+#         trajectory = trajectory.append(temp, ignore_index=True)
+#
+#     # print(trajectory)
+#
+#     if filename is not None:
+#         with open(str('./trajectories/' + filename + '.csv'), 'w', encoding='utf-8') as file:
+#             trajectory.to_csv(path_or_buf=file, index=False, header=humane, line_terminator='\n')
+#     else:
+#         return trajectory
 
 
 if __name__ == '__main__':
@@ -343,21 +331,20 @@ if __name__ == '__main__':
         [0,  0, 0,  1]
     ])
     
-    trajectory = getTrajectory(M, Start, P1, P2, Finish, (2, 4, 6))
-    
-##    with open('./trajectories/test1.csv', 'r', encoding='utf8') as f:
-##        trajectory = pd.read_csv(f)
-    xyz = []
-    for i in range(120):
-        tmp = trajectory.iloc[i]
-        xyz.append(np.matmul(solveDirect(M, (tmp.iloc[0], tmp.iloc[1], tmp.iloc[2], tmp.iloc[3], tmp.iloc[4], tmp.iloc[5])), [[0],[0],[0],[1]]))
-
-    with open('./trajectories/test2.csv', 'w', encoding='utf8') as f:
-        for pos in xyz:
-            f.write(str(pos[0]).strip('[]'))
-            f.write(', ')
-            f.write(str(pos[1]).strip('[]'))
-            f.write(', ')
-            f.write(str(pos[1]).strip('[]'))
-            f.write('\n')
-        
+#     trajectory = getTrajectory(M, Start, P1, P2, Finish, (2, 4, 6))
+#
+# ##    with open('./trajectories/test1.csv', 'r', encoding='utf8') as f:
+# ##        trajectory = pd.read_csv(f)
+#     xyz = []
+#     for i in range(120):
+#         tmp = trajectory.iloc[i]
+#         xyz.append(np.matmul(solveDirect(M, (tmp.iloc[0], tmp.iloc[1], tmp.iloc[2], tmp.iloc[3], tmp.iloc[4], tmp.iloc[5])), [[0],[0],[0],[1]]))
+#
+#     with open('./trajectories/test2.csv', 'w', encoding='utf8') as f:
+#         for pos in xyz:
+#             f.write(str(pos[0]).strip('[]'))
+#             f.write(', ')
+#             f.write(str(pos[1]).strip('[]'))
+#             f.write(', ')
+#             f.write(str(pos[1]).strip('[]'))
+#             f.write('\n')
